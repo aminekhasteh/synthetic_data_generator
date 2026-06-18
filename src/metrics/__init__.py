@@ -45,7 +45,9 @@ def compute_all_metrics(
     metrics.update(compute_temporal_metrics(real_train, synthetic, config=config))
     metrics.update(
         compute_privacy_metrics(
-            real_train, synthetic, real_holdout, privacy_budget=privacy_budget
+            real_train, synthetic, real_holdout,
+            privacy_budget=privacy_budget,
+            config=config,
         )
     )
     metrics.update(

@@ -18,6 +18,9 @@ Includes a CLI for arbitrary seed datasets and a Jupyter notebook walkthrough us
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+
+# Optional: Kaggle download helpers for the notebook
+pip install -r requirements-kaggle.txt
 ```
 
 ### CLI (any dataset)
@@ -36,7 +39,42 @@ python run_synthetic_pipeline.py \
 jupyter notebook notebooks/smartnoise_synthetic_eda.ipynb
 ```
 
-Requires Kaggle credentials for `kagglehub` (`~/.kaggle/kaggle.json`).
+Requires Kaggle credentials only if using the notebook download cell (`pip install -r requirements-kaggle.txt`).
+
+### Test all example datasets
+
+Five football/economics datasets plus a credit-card sample are included under `examples/`:
+
+| Dataset | Rows | Dictionary |
+|---------|------|------------|
+| `club_financials.csv` | 884 | `club_financials_dictionary.yaml` |
+| `league_metrics.csv` | 170 | `league_metrics_dictionary.yaml` |
+| `player_market_values.csv` | 1,025 | `player_market_values_dictionary.yaml` |
+| `record_transfers.csv` | 57 | `record_transfers_dictionary.yaml` |
+| `transfers_history.csv` | 14,990 | `transfers_history_dictionary.yaml` |
+
+Run the full test suite (fast mode):
+
+```bash
+python run_example_datasets.py
+```
+
+Run a single dataset:
+
+```bash
+python run_example_datasets.py --dataset club_financials.csv
+```
+
+Or run manually:
+
+```bash
+python run_synthetic_pipeline.py \
+  --seed-dataset examples/club_financials.csv \
+  --data-dictionary examples/club_financials_dictionary.yaml \
+  --sampling true --bootstrap-n 3
+```
+
+Results are written to `outputs/example_runs/`.
 
 ## CLI reference
 
@@ -45,13 +83,13 @@ Requires Kaggle credentials for `kagglehub` (`~/.kaggle/kaggle.json`).
 | Flag | Description |
 |------|-------------|
 | `--seed-dataset` | Path to seed CSV or Parquet |
-| `--columns` | Comma-separated column list |
 
 ### Common options
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--data-dictionary` | — | Optional YAML/JSON with column metadata |
+| `--columns` | inferred | Comma-separated columns (optional with dictionary or auto-inference) |
+| `--data-dictionary` | — | Optional YAML/JSON with column metadata and transforms |
 | `--sampling` | `true` | Fast (`true`) or full (`false`) run |
 | `--epsilon` | `1.0` | Differential privacy budget |
 | `--synthesizer` | `mwem` | `mwem`, `dpctgan`, `mst`, `aim` |
@@ -75,6 +113,16 @@ Requires Kaggle credentials for `kagglehub` (`~/.kaggle/kaggle.json`).
 | `--bootstrap-min-class-count` | `1` | Min positive-class rows (stratified) |
 | `--bootstrap-save-replicates` | `true` | Save `bootstrap_*/` subfolders |
 
+## Data loading
+
+The pipeline reads any CSV/Parquet/JSON/TSV seed file you provide. It:
+
+1. **Profiles** the dataset (dtypes, nulls, duplicates) → saved as `seed_data/data_profile.json`
+2. **Applies transforms** from the data dictionary (`column_specs`: cast, fillna, clip, log_transform, parse_datetime)
+3. **Falls back** when no dictionary is provided: auto-detects target (`Class`, `target`, `label`, …), temporal (`Time`, `timestamp`, …), and column types; excludes ID-like columns
+
+Kaggle is **optional** — only used by the notebook via `src/kaggle_data.py` (`pip install -r requirements-kaggle.txt`).
+
 ## Data dictionary (optional)
 
 ```yaml
@@ -86,8 +134,14 @@ categorical_columns:
 continuous_columns:
   - Time
   - Amount
-  - V1
-  # ...
+column_specs:
+  Class:
+    type: categorical
+    cast: int
+  Amount:
+    type: continuous
+    fillna: 0
+    clip: [0, 500000]
 ```
 
 See [`examples/creditcard_dictionary.yaml`](examples/creditcard_dictionary.yaml).
@@ -101,6 +155,7 @@ outputs/creditcard_20260618_123006_sampling-true_boot-10_eps-1.0_synth-mwem/
 ├── seed_data/
 │   ├── seed.csv              # seed used for synthesis
 │   ├── source.csv            # copy of input file
+│   ├── data_profile.json     # investigation summary
 │   ├── dictionary.yaml       # copied if provided
 │   └── run_config.json       # all run parameters
 ├── synthetic.csv
@@ -132,7 +187,8 @@ outputs/creditcard_20260618_123006_sampling-true_boot-10_eps-1.0_synth-mwem/
 │   └── creditcard_dictionary.yaml
 └── src/
     ├── config.py               # dataset config & data dictionary
-    ├── data.py                 # sampling & bootstrap helpers
+    ├── data.py                 # load, investigate, transform, sample
+    ├── kaggle_data.py          # optional Kaggle helpers
     ├── pipeline.py             # end-to-end pipeline
     ├── synthesis.py            # SmartNoise wrapper
     └── metrics/                # fidelity, temporal, privacy, utility, azure

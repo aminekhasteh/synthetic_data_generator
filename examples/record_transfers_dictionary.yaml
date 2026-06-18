@@ -1,0 +1,50 @@
+table_name: record_transfers
+temporal_column: date
+categorical_columns:
+  - season
+  - position
+  - from_club
+  - to_club
+  - is_free_transfer
+  - is_loan
+  - is_extension
+continuous_columns:
+  - year
+  - age_at_transfer
+  - fee_eur_m
+columns:
+  - date
+  - year
+  - season
+  - position
+  - age_at_transfer
+  - from_club
+  - to_club
+  - fee_eur_m
+  - is_free_transfer
+  - is_loan
+  - is_extension
+column_specs:
+  date:
+    type: temporal
+    parse_datetime: true
+  year:
+    type: continuous
+    cast: int
+  age_at_transfer:
+    type: continuous
+    cast: int
+    clip: [16, 40]
+  fee_eur_m:
+    type: continuous
+    fillna: 0
+    clip: [0, 200]
+  is_free_transfer:
+    type: categorical
+    cast: int
+  is_loan:
+    type: categorical
+    cast: int
+  is_extension:
+    type: categorical
+    cast: int

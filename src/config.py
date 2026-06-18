@@ -20,7 +20,9 @@ class DatasetConfig:
     temporal_column: str | None = None
     categorical_columns: list[str] = field(default_factory=list)
     continuous_columns: list[str] = field(default_factory=list)
+    column_specs: dict[str, dict] = field(default_factory=dict)
     table_name: str = "synthetic_data"
+    inferred: bool = False
 
     @property
     def feature_columns(self) -> list[str]:
@@ -43,6 +45,16 @@ class DatasetConfig:
                 continue
             if col in self.continuous_columns:
                 continue
+            spec = self.column_specs.get(col, {})
+            spec_type = spec.get("type", "").lower()
+            if spec_type == "categorical":
+                inferred_cat.append(col)
+                continue
+            if spec_type in {"continuous", "numeric", "float", "int"}:
+                inferred_cont.append(col)
+                continue
+            if spec_type == "temporal":
+                continue
             series = df[col]
             if pd.api.types.is_numeric_dtype(series):
                 nunique = series.nunique(dropna=True)
@@ -62,7 +74,7 @@ class DatasetConfig:
         return asdict(self)
 
 
-def _load_dictionary_file(path: Path) -> dict:
+def load_dictionary_file(path: Path) -> dict:
     suffix = path.suffix.lower()
     with open(path) as f:
         if suffix in {".yaml", ".yml"}:
@@ -70,6 +82,48 @@ def _load_dictionary_file(path: Path) -> dict:
         if suffix == ".json":
             return json.load(f)
         raise ValueError(f"Unsupported data dictionary format: {suffix}")
+
+
+def build_dataset_config(
+    name: str,
+    columns: list[str],
+    meta: dict | None = None,
+) -> DatasetConfig:
+    """Build a DatasetConfig from explicit columns and optional dictionary metadata."""
+    meta = meta or {}
+    target = meta.get("target_column")
+    temporal = meta.get("temporal_column")
+    categorical = list(meta.get("categorical_columns") or [])
+    continuous = list(meta.get("continuous_columns") or [])
+    column_specs = dict(meta.get("column_specs") or {})
+    table_name = meta.get("table_name", name)
+
+    if not categorical and not continuous and column_specs:
+        for col, spec in column_specs.items():
+            if col not in columns:
+                continue
+            spec_type = str(spec.get("type", "")).lower()
+            if spec_type == "categorical":
+                categorical.append(col)
+            elif spec_type in {"continuous", "numeric", "float", "int", "temporal"}:
+                continuous.append(col)
+
+    if target and target not in columns:
+        raise ValueError(f"target_column '{target}' not in selected columns")
+    if temporal and temporal not in columns:
+        raise ValueError(f"temporal_column '{temporal}' not in selected columns")
+
+    return DatasetConfig(
+        name=name,
+        columns=columns,
+        target_column=target,
+        temporal_column=temporal,
+        categorical_columns=categorical,
+        continuous_columns=continuous,
+        column_specs=column_specs,
+        table_name=table_name,
+        inferred=bool(meta.get("_inferred")),
+    )
 
 
 def load_dataset_config(
@@ -82,51 +136,10 @@ def load_dataset_config(
     name = dataset_name or seed_path.stem
     meta: dict = {}
     if dictionary_path is not None:
-        meta = _load_dictionary_file(dictionary_path)
+        meta = load_dictionary_file(dictionary_path)
 
-    if columns is None:
-        columns = meta.get("columns")
-    if not columns:
-        raise ValueError(
-            "No columns specified. Pass --columns or include 'columns' in the data dictionary."
-        )
+    resolved_columns = columns or meta.get("columns")
+    if not resolved_columns:
+        return build_dataset_config(name=name, columns=[], meta=meta)
 
-    target = meta.get("target_column")
-    temporal = meta.get("temporal_column")
-    categorical = meta.get("categorical_columns", [])
-    continuous = meta.get("continuous_columns", [])
-    table_name = meta.get("table_name", name)
-
-    if target and target not in columns:
-        raise ValueError(f"target_column '{target}' not in selected columns")
-    if temporal and temporal not in columns:
-        raise ValueError(f"temporal_column '{temporal}' not in selected columns")
-
-    return DatasetConfig(
-        name=name,
-        columns=columns,
-        target_column=target,
-        temporal_column=temporal,
-        categorical_columns=list(categorical),
-        continuous_columns=list(continuous),
-        table_name=table_name,
-    )
-
-
-def load_seed_dataframe(seed_path: Path, config: DatasetConfig) -> pd.DataFrame:
-    """Load seed dataset and restrict to configured columns."""
-    suffix = seed_path.suffix.lower()
-    if suffix == ".csv":
-        df = pd.read_csv(seed_path)
-    elif suffix == ".parquet":
-        df = pd.read_parquet(seed_path)
-    elif suffix in {".json"}:
-        df = pd.read_json(seed_path)
-    else:
-        raise ValueError(f"Unsupported seed dataset format: {suffix}")
-
-    missing = set(config.columns) - set(df.columns)
-    if missing:
-        raise ValueError(f"Seed dataset missing columns: {sorted(missing)}")
-
-    return df[config.columns].copy()
+    return build_dataset_config(name=name, columns=list(resolved_columns), meta=meta)

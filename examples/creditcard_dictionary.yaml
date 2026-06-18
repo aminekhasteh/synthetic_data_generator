@@ -1,4 +1,3 @@
-# Data dictionary example for Kaggle credit card fraud dataset
 table_name: creditcard
 target_column: Class
 temporal_column: Time
@@ -35,3 +34,15 @@ continuous_columns:
   - V26
   - V27
   - V28
+column_specs:
+  Class:
+    type: categorical
+    cast: int
+  Time:
+    type: temporal
+    cast: float
+  Amount:
+    type: continuous
+    cast: float
+    fillna: 0
+    clip: [0, 500000]

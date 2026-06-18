@@ -1,0 +1,61 @@
+table_name: transfers_history
+temporal_column: date
+categorical_columns:
+  - season
+  - transfer_window
+  - position
+  - from_league
+  - from_country
+  - to_league
+  - to_country
+  - is_free_transfer
+  - is_loan
+  - is_intra_league
+  - is_intra_country
+continuous_columns:
+  - year
+  - age
+  - fee_eur_m
+columns:
+  - date
+  - year
+  - season
+  - transfer_window
+  - position
+  - age
+  - from_league
+  - from_country
+  - to_league
+  - to_country
+  - fee_eur_m
+  - is_free_transfer
+  - is_loan
+  - is_intra_league
+  - is_intra_country
+column_specs:
+  date:
+    type: temporal
+    parse_datetime: true
+  year:
+    type: continuous
+    cast: int
+  age:
+    type: continuous
+    cast: int
+    clip: [15, 45]
+  fee_eur_m:
+    type: continuous
+    fillna: 0
+    clip: [0, 200]
+  is_free_transfer:
+    type: categorical
+    cast: int
+  is_loan:
+    type: categorical
+    cast: int
+  is_intra_league:
+    type: categorical
+    cast: int
+  is_intra_country:
+    type: categorical
+    cast: int

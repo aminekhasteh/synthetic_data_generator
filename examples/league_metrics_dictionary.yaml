@@ -1,0 +1,40 @@
+table_name: league_metrics
+temporal_column: year
+categorical_columns:
+  - league
+  - country
+continuous_columns:
+  - year
+  - num_teams
+  - total_revenue_eur_m
+  - avg_attendance
+  - avg_ticket_eur
+  - foreign_players_pct
+columns:
+  - year
+  - league
+  - country
+  - num_teams
+  - total_revenue_eur_m
+  - avg_attendance
+  - avg_ticket_eur
+  - foreign_players_pct
+column_specs:
+  year:
+    type: temporal
+    cast: int
+  num_teams:
+    type: continuous
+    cast: int
+  total_revenue_eur_m:
+    type: continuous
+    fillna: 0
+  avg_attendance:
+    type: continuous
+    fillna: 0
+  avg_ticket_eur:
+    type: continuous
+    fillna: 0
+  foreign_players_pct:
+    type: continuous
+    clip: [0, 100]

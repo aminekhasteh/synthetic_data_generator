@@ -13,7 +13,8 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from ..data import TARGET_COLUMN
+from ..data import DEFAULT_TARGET_COLUMN
+from .encoding import encode_features
 
 if TYPE_CHECKING:
     from ..config import DatasetConfig
@@ -25,13 +26,13 @@ def _train_and_evaluate(
     target_column: str,
 ) -> dict:
     feature_cols = [c for c in train_df.columns if c != target_column]
-    X_train = train_df[feature_cols].values
     y_train = train_df[target_column].values
-    X_test = test_df[feature_cols].values
     y_test = test_df[target_column].values
 
     if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
         return {"auroc": np.nan, "pr_auc": np.nan, "f1": np.nan}
+
+    X_train, X_test, _ = encode_features(train_df, test_df, feature_cols)
 
     clf = LogisticRegression(max_iter=1000, class_weight="balanced", random_state=42)
     clf.fit(X_train, y_train)
@@ -53,7 +54,7 @@ def compute_utility_metrics(
 ) -> dict:
     """Compute TRTR and TSTR downstream utility metrics."""
     target = config.target_column if config else (
-        TARGET_COLUMN if TARGET_COLUMN in real_train.columns else None
+        DEFAULT_TARGET_COLUMN if DEFAULT_TARGET_COLUMN in real_train.columns else None
     )
     if not target or target not in real_train.columns:
         return {

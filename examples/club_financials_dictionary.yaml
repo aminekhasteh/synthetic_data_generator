@@ -1,0 +1,43 @@
+table_name: club_financials
+temporal_column: year
+categorical_columns:
+  - league
+  - country
+continuous_columns:
+  - year
+  - stadium_capacity
+  - revenue_eur_m
+  - wage_bill_eur_m
+  - wages_to_revenue_pct
+  - net_transfer_spend_eur_m
+  - operating_profit_eur_m
+columns:
+  - year
+  - league
+  - country
+  - stadium_capacity
+  - revenue_eur_m
+  - wage_bill_eur_m
+  - wages_to_revenue_pct
+  - net_transfer_spend_eur_m
+  - operating_profit_eur_m
+column_specs:
+  year:
+    type: temporal
+    cast: int
+  stadium_capacity:
+    type: continuous
+    cast: float
+  revenue_eur_m:
+    type: continuous
+    fillna: 0
+  wage_bill_eur_m:
+    type: continuous
+    fillna: 0
+  wages_to_revenue_pct:
+    type: continuous
+    clip: [0, 100]
+  net_transfer_spend_eur_m:
+    type: continuous
+  operating_profit_eur_m:
+    type: continuous

@@ -1,0 +1,2 @@
+# Optional: only needed for Kaggle notebook / download helpers
+kagglehub>=0.3.0

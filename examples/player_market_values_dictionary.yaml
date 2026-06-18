@@ -1,0 +1,33 @@
+table_name: player_market_values
+target_column: is_peak_year
+temporal_column: year
+categorical_columns:
+  - position
+  - is_peak_year
+continuous_columns:
+  - year
+  - age
+  - market_value_eur_m
+columns:
+  - year
+  - age
+  - position
+  - market_value_eur_m
+  - is_peak_year
+column_specs:
+  year:
+    type: temporal
+    cast: int
+  age:
+    type: continuous
+    cast: int
+    clip: [15, 45]
+  market_value_eur_m:
+    type: continuous
+    fillna: 0
+    clip: [0, 200]
+  is_peak_year:
+    type: categorical
+    cast: int
+  position:
+    type: categorical

@@ -9,7 +9,7 @@ import pandas as pd
 from scipy import stats
 from scipy.stats import wasserstein_distance
 
-from ..data import TARGET_COLUMN
+from ..data import DEFAULT_TARGET_COLUMN
 
 if TYPE_CHECKING:
     from ..config import DatasetConfig
@@ -35,7 +35,7 @@ def compute_fidelity_metrics(
 ) -> dict:
     """Compute univariate and bivariate statistical fidelity metrics."""
     target = config.target_column if config else (
-        TARGET_COLUMN if TARGET_COLUMN in real.columns else None
+        DEFAULT_TARGET_COLUMN if DEFAULT_TARGET_COLUMN in real.columns else None
     )
     numeric_cols = _numeric_columns(real, target)
     ks_stats = []

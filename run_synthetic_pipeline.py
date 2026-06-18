@@ -58,9 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--columns",
-        required=True,
+        required=False,
+        default=None,
         type=_parse_columns,
-        help="Comma-separated list of columns to use (e.g. Time,Amount,Class).",
+        help=(
+            "Comma-separated columns to use. Optional if provided in the data dictionary "
+            "or when inferring from the dataset (all non-ID columns)."
+        ),
     )
     parser.add_argument(
         "--data-dictionary",
@@ -195,12 +199,14 @@ def main(argv: list[str] | None = None) -> int:
         log.error("Data dictionary not found: %s", args.data_dictionary)
         return 1
 
-    config = load_dataset_config(
-        seed_path=args.seed_dataset,
-        columns=args.columns,
-        dictionary_path=args.data_dictionary,
-        dataset_name=args.dataset_name,
-    )
+    config = None
+    if args.columns or args.data_dictionary:
+        config = load_dataset_config(
+            seed_path=args.seed_dataset,
+            columns=args.columns,
+            dictionary_path=args.data_dictionary,
+            dataset_name=args.dataset_name,
+        )
 
     run_kwargs = {
         "epsilon": args.epsilon,
@@ -261,6 +267,8 @@ def main(argv: list[str] | None = None) -> int:
             config=config,
             run=run,
             dictionary_path=args.data_dictionary,
+            columns=args.columns,
+            dataset_name=args.dataset_name,
         )
     except Exception:
         log.exception("Pipeline failed")

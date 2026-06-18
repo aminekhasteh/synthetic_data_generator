@@ -12,12 +12,13 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
-from .config import DatasetConfig, load_seed_dataframe
+from .config import DatasetConfig, load_dictionary_file
 from .data import (
     aggregate_bootstrap_metrics,
-    create_seed_and_holdout,
+    load_and_prepare_dataset,
     random_bootstrap,
     random_sample,
+    save_data_profile,
     stratified_bootstrap,
     stratified_sample,
 )
@@ -178,6 +179,7 @@ def save_seed_artifacts(
     config: DatasetConfig,
     run: RunConfig,
     dictionary_path: Path | None,
+    data_profile: dict | None = None,
 ) -> Path:
     """Persist seed data and run metadata under seed_data/."""
     seed_dir = output_dir / "seed_data"
@@ -220,32 +222,47 @@ def save_seed_artifacts(
     with open(output_dir / "dataset_config.json", "w") as f:
         json.dump(config.to_dict(), f, indent=2)
 
+    if data_profile is not None:
+        save_data_profile(data_profile, seed_dir / "data_profile.json")
+
     logger.info("Saved seed data to %s", seed_dir)
     return seed_dir
 
 
 def run_pipeline(
     seed_path: Path,
-    config: DatasetConfig,
+    config: DatasetConfig | None,
     run: RunConfig,
     dictionary_path: Path | None = None,
+    columns: list[str] | None = None,
+    dataset_name: str | None = None,
 ) -> Path:
     """Execute synthesis, metrics, and optional bootstrap; return output directory."""
+    dictionary_meta = load_dictionary_file(dictionary_path) if dictionary_path else None
+
+    df, config, profile = load_and_prepare_dataset(
+        seed_path=seed_path,
+        config=config if config and config.columns else None,
+        dictionary_meta=dictionary_meta,
+        columns=columns,
+        dataset_name=dataset_name or (config.name if config else None),
+    )
+
     output_dir = build_output_dir(config, run)
     logger.info("Output directory: %s", output_dir)
-
-    df = load_seed_dataframe(seed_path, config)
-    config.infer_column_types(df)
     logger.info(
-        "Loaded %s rows x %s columns (target=%s, temporal=%s)",
+        "Loaded %s rows x %s columns (target=%s, temporal=%s, inferred=%s)",
         len(df),
         len(config.columns),
         config.target_column,
         config.temporal_column,
+        config.inferred,
     )
 
     seed_df, holdout_df, pool_df = prepare_splits(df, config, run)
-    save_seed_artifacts(output_dir, seed_df, seed_path, config, run, dictionary_path)
+    save_seed_artifacts(
+        output_dir, seed_df, seed_path, config, run, dictionary_path, data_profile=profile
+    )
 
     logger.info("Fitting synthesizer (%s, epsilon=%s)...", run.synthesizer, run.epsilon)
     result = fit_sample_smartnoise(

@@ -9,7 +9,7 @@ import pandas as pd
 from snsynth import Synthesizer
 from snsynth.transform import BinTransformer, LabelTransformer, TableTransformer
 
-from .data import TARGET_COLUMN
+from .data import DEFAULT_TARGET_COLUMN
 
 if TYPE_CHECKING:
     from .config import DatasetConfig
@@ -27,7 +27,7 @@ class SynthesisResult:
 
 def _resolve_config(config: DatasetConfig | None, seed_df: pd.DataFrame):
     if config is None:
-        target = TARGET_COLUMN if TARGET_COLUMN in seed_df.columns else None
+        target = DEFAULT_TARGET_COLUMN if DEFAULT_TARGET_COLUMN in seed_df.columns else None
         categorical = [target] if target else []
         continuous = [c for c in seed_df.columns if c not in categorical]
         return target, categorical, continuous
